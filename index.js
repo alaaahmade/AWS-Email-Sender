@@ -1,12 +1,14 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const AWS = require('aws-sdk');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
 const app = express();
+app.use(morgan('dev'));
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -21,7 +23,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://13.51.157.55:3000',
+        url: 'http://localhost:3000',
       },
     ],
   },
