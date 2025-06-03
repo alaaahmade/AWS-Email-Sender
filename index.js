@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
-const nodemailer = require('nodemailer');
+const AWS = require('aws-sdk');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
@@ -69,44 +69,58 @@ app.post('/messages', async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields: emails, platform, link' });
   }
 
-  // Setup Nodemailer with Gmail
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS,
-    },
+  // Setup AWS SES
+  AWS.config.update({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION || 'us-east-1',
   });
+  const ses = new AWS.SES();
 
-  const mailOptions = (to) => ({
-    from: `Security Team <${process.env.GMAIL_USER}>`,
-    to,
-    subject: `Security Alert: Action Required on ${platform}`,
-    html: `<div style=\"font-family:sans-serif;max-width:500px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;\">\n      <h2 style=\"color:#3b82f6;\">Security Alert for ${platform}</h2>\n      <p>Dear user,</p>\n      <p>We detected an attempt to access your account on <b>${platform}</b>. If this was you, please confirm your data by clicking the link below. If not, we recommend changing your password immediately.</p>\n      <a href=\"${link}\" style=\"display:inline-block;margin:16px 0;padding:10px 20px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:4px;\">Confirm Your Data</a>\n      <p>If you have any questions, contact our support team.</p>\n      <p style=\"font-size:12px;color:#888;\">This is an automated message. Please do not reply.</p>\n    </div>`,
-    text: `Dear user,\n\nWe detected an attempt to access your account on ${platform}.\nIf this was you, please confirm your data by clicking the following link: ${link}\nIf not, we recommend changing your password immediately.\n\nIf you have any questions, contact our support team.\n\nThis is an automated message. Please do not reply.`,
-    headers: {
-      'List-Unsubscribe': `<mailto:${process.env.GMAIL_USER}?subject=unsubscribe>`
-    }
+  const mailParams = (to) => ({
+    Source: process.env.SES_FROM,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: { Data: `Security Alert: Action Required on ${platform}` },
+      Body: {
+        Html: {
+          Data: `<div style=\"font-family:sans-serif;max-width:500px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;\">\n      <h2 style=\"color:#3b82f6;\">Security Alert for ${platform}</h2>\n      <p>Dear user,</p>\n      <p>We detected an attempt to access your account on <b>${platform}</b>. If this was you, please confirm your data by clicking the link below. If not, we recommend changing your password immediately.</p>\n      <a href=\"${link}\" style=\"display:inline-block;margin:16px 0;padding:10px 20px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:4px;\">Confirm Your Data</a>\n      <p>If you have any questions, contact our support team.</p>\n      <p style=\"font-size:12px;color:#888;\">This is an automated message. Please do not reply.</p>\n    </div>`
+        },
+        Text: {
+          Data: `Dear user,\n\nWe detected an attempt to access your account on ${platform}.\nIf this was you, please confirm your data by clicking the following link: ${link}\nIf not, we recommend changing your password immediately.\n\nIf you have any questions, contact our support team.\n\nThis is an automated message. Please do not reply.`
+        }
+      }
+    },
+    ReplyToAddresses: [process.env.SES_FROM],
+    // Add List-Unsubscribe header
+    MessageTags: [
+      {
+        Name: 'List-Unsubscribe',
+        Value: `<mailto:${process.env.SES_FROM}?subject=unsubscribe>`
+      }
+    ]
   });
 
   try {
     const results = await Promise.all(
       emails.map(email => {
-        return transporter.sendMail(mailOptions(email))
+        return ses.sendEmail(mailParams(email)).promise()
           .then(info => {
-            console.log(`Nodemailer response for ${email}:`, info.response);
+            console.log(`SES response for ${email}:`, info.MessageId);
             return { info };
           })
           .catch(error => {
-            console.error(`Nodemailer error for ${email}:`, error);
+            console.error(`SES error for ${email}:`, error);
             return { error };
           });
       })
     );
-    console.log('All Nodemailer responses:', results);
+    console.log('All SES responses:', results);
     res.json({ message: 'Emails sent successfully', count: results.length, results });
   } catch (error) {
-    console.error('Error sending email with Nodemailer:', error);
+    console.error('Error sending email with SES:', error);
     res.status(500).json({ error: 'Failed to send emails', details: error.message });
   }
 });
