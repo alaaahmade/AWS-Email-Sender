@@ -23,7 +23,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
+        url: 'http://51.20.124.204:3000',
       },
     ],
   },
@@ -98,13 +98,6 @@ app.post('/messages', async (req, res) => {
       }
     },
     ReplyToAddresses: [process.env.SES_FROM],
-    // Add List-Unsubscribe header
-    MessageTags: [
-      {
-        Name: 'List-Unsubscribe',
-        Value: `<mailto:${process.env.SES_FROM}?subject=unsubscribe>`
-      }
-    ]
   });
 
   try {
@@ -128,6 +121,10 @@ app.post('/messages', async (req, res) => {
     res.status(500).json({ error: 'Failed to send emails', details: error.message });
   }
 });
+
+app.get('/hello', (req, res) => {
+  res.json({msg: 'hello world'})
+})
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
