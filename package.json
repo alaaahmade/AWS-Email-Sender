@@ -1,0 +1,20 @@
+{
+  "name": "node-mailer-server",
+  "version": "1.0.0",
+  "description": "Express server with Swagger and email sending endpoint",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.5.0",
+    "express": "^4.18.2",
+    "mailgun-js": "^0.22.0",
+    "nodemailer": "^6.10.1",
+    "resend": "^4.5.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
