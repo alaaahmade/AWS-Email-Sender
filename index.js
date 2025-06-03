@@ -97,7 +97,7 @@ app.post('/messages', async (req, res) => {
         }
       }
     },
-    ReplyToAddresses: [process.env.SES_FROM],
+    ReplyToAddresses: [process.env.SES_FROM]
   });
 
   try {
